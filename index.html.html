@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Move the Needle</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ─────────────────────────────────── */
+:root {
+  --ink:       #1c1917;
+  --ink2:      #57534e;
+  --ink3:      #a8a29e;
+  --paper:     #fafaf9;
+  --card:      #ffffff;
+  --rule:      rgba(0,0,0,0.07);
+  --rule2:     rgba(0,0,0,0.12);
+
+  --green:     #166534;
+  --green-mid: #16a34a;
+  --green-bg:  #f0fdf4;
+  --green-bd:  #bbf7d0;
+
+  --amber:     #92400e;
+  --amber-bg:  #fffbeb;
+  --amber-bd:  #fde68a;
+
+  --red:       #991b1b;
+  --red-bg:    #fef2f2;
+  --red-bd:    #fecaca;
+
+  --accent:    #1c1917;
+  --r:         12px;
+  --r-sm:      8px;
+}
+
+/* ── RESET ───────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:15px;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  min-height:100vh;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── AUTH ────────────────────────────────────── */
+#auth-screen{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:var(--paper);
+}
+.auth-wrap{width:100%;max-width:360px;}
+.auth-wordmark{
+  font-family:'DM Serif Display',serif;
+  font-size:28px;
+  letter-spacing:-0.5px;
+  margin-bottom:4px;
+}
+.auth-wordmark em{font-style:italic;color:var(--green-mid);}
+.auth-tagline{font-size:13px;color:var(--ink3);margin-bottom:32px;}
+
+.tab-bar{
+  display:flex;gap:0;
+  background:#f5f5f4;
+  border-radius:var(--r-sm);
+  padding:3px;
+  margin-bottom:22px;
+}
+.tab-btn{
+  flex:1;padding:7px 0;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:500;
+  background:transparent;border:none;
+  border-radius:6px;
+  color:var(--ink3);cursor:pointer;
+  transition:.15s;
+}
+.tab-btn.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08);}
+
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--ink2);margin-bottom:5px;}
+.field input{
+  width:100%;padding:10px 13px;
+  border:1px solid var(--rule2);
+  border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;color:var(--ink);
+  background:#fff;outline:none;
+  transition:border-color .15s;
+}
+.field input:focus{border-color:var(--ink);}
+
+.btn-full{
+  width:100%;padding:11px;
+  background:var(--ink);color:#fff;
+  border:none;border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:500;
+  cursor:pointer;margin-top:4px;
+  transition:opacity .15s;
+}
+.btn-full:hover{opacity:.85;}
+.btn-full:disabled{opacity:.4;cursor:default;}
+.auth-msg{font-size:12px;text-align:center;margin-top:10px;min-height:18px;}
+.auth-msg.err{color:var(--red);}
+.auth-msg.ok{color:var(--green);}
+
+/* ── APP SHELL ───────────────────────────────── */
+#app{display:none;min-height:100vh;display:none;}
+
+.shell{
+  display:grid;
+  grid-template-columns:212px 1fr;
+  grid-template-rows:52px 1fr;
+  min-height:100vh;
+}
+
+/* ── TOP BAR ─────────────────────────────────── */
+.topbar{
+  grid-column:1/-1;
+  background:#fff;
+  border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;
+  padding:0 20px;gap:14px;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-wordmark{
+  font-family:'DM Serif Display',serif;
+  font-size:16px;letter-spacing:-0.3px;
+}
+.topbar-wordmark em{font-style:italic;color:var(--green-mid);}
+.topbar-divider{width:1px;height:20px;background:var(--rule2);}
+.topbar-nudge{
+  font-size:12px;color:var(--amber);
+  background:var(--amber-bg);
+  border:1px solid var(--amber-bd);
+  padding:4px 12px;border-radius:20px;
+  display:none;
+}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.topbar-avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:#e7e5e4;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:500;color:var(--ink);
+}
+.topbar-name{font-size:13px;color:var(--ink2);}
+.signout{
+  font-size:12px;color:var(--ink3);cursor:pointer;
+  background:none;border:none;
+  font-family:'DM Sans',sans-serif;
+  padding:4px 6px;border-radius:4px;
+  transition:color .15s;
+}
+.signout:hover{color:var(--ink);}
+
+/* ── SIDEBAR ─────────────────────────────────── */
+.sidebar{
+  background:#fff;
+  border-right:1px solid var(--rule);
+  padding:16px 0;
+  display:flex;flex-direction:column;
+  position:sticky;top:52px;
+  height:calc(100vh - 52px);
+  overflow-y:auto;
+}
+.nav-group-label{
+  font-size:10px;font-weight:500;
+  text-transform:uppercase;letter-spacing:1px;
+  color:var(--ink3);
+  padding:0 14px;
+  margin:14px 0 4px;
+}
+.nav-group-label:first-child{margin-top:0;}
+.nav-btn{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 14px;width:100%;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:400;
+  color:var(--ink2);
+  background:none;border:none;
+  cursor:pointer;text-align:left;
+  position:relative;transition:.12s;
+  border-radius:0;
+}
+.nav-btn:hover{background:#f5f5f4;color:var(--ink);}
+.nav-btn.on{background:#f5f5f4;color:var(--ink);font-weight:500;}
+.nav-btn.on::before{
+  content:'';position:absolute;
+  left:0;top:5px;bottom:5px;
+  width:2px;background:var(--ink);
+  border-radius:0 2px 2px 0;
+}
+.nav-icon{font-size:14px;flex-shrink:0;width:18px;text-align:center;}
+.sidebar-foot{
+  margin-top:auto;
+  padding:14px;
+  border-top:1px solid var(--rule);
+  font-size:11px;color:var(--ink3);
+  display:flex;align-items:center;justify-content:space-between;
+}
+
+/* ── MAIN ────────────────────────────────────── */
+.main{
+  padding:28px 28px 48px;
+  background:var(--paper);
+  overflow-y:auto;
+}
+.page{display:none;}
+.page.on{display:block;}
+
+.page-head{
+  display:flex;align-items:flex-start;
+  justify-content:space-between;
+  margin-bottom:24px;gap:16px;
+  flex-wrap:wrap;
+}
+.page-title{
+  font-family:'DM Serif Display',serif;
+  font-size:26px;letter-spacing:-0.5px;line-height:1.1;
+}
+.page-title em{font-style:italic;color:var(--green-mid);}
+.page-sub{font-size:13px;color:var(--ink3);margin-top:3px;}
+
+/* ── CARD ────────────────────────────────────── */
+.card{
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-radius:var(--r);
+  padding:20px;
+}
+.card+.card{margin-top:14px;}
+.card-label{
+  font-size:10px;font-weight:500;
+  text-transform:uppercase;letter-spacing:1px;
+  color:var(--ink3);margin-bottom:14px;
+}
+
+/* ── DIALS ───────────────────────────────────── */
+.dials-row{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:16px;
+}
+.dial-card{
+  background:var(--card);
+  border:1px solid var(--rule);
+  border-radius:var(--r);
+  padding:18px 14px 14px;
+  display:flex;flex-direction:column;
+  align-items:center;text-align:center;
+}
+.dial-period{
+  font-size:10px;font-weight:500;
+  text-transform:uppercase;letter-spacing:1px;
+  color:var(--ink3);
+  margin-bottom:10px;
+  align-self:flex-start;
+}
+.dial-num{
+  font-family:'DM Serif Display',serif;
+  font-size:32px;letter-spacing:-1px;
+  margin-top:6px;line-height:1;
+}
+.dial-sub{font-size:11px;color:var(--ink3);margin-top:3px;}
+.zone-pill{
+  font-size:11px;font-weight:500;
+  padding:3px 10px;border-radius:20px;
+  margin-top:8px;border:1px solid;
+  letter-spacing:0.1px;
+}
+.z-green{color:var(--green);background:var(--green-bg);border-color:var(--green-bd);}
+.z-amber{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd);}
+.z-red  {color:var(--red);  background:var(--red-bg);  border-color:var(--red-bd);}
+
+/* ── TWO-COL ─────────────────────────────────── */
+.two-col{display:grid;grid-template-columns:1fr 340px;gap:14px;}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+
+/* ── GOAL ROWS ───────────────────────────────── */
+.goal-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid var(--rule);
+  transition:.12s;
+}
+.goal-row:last-child{border-bottom:none;}
+.goal-row.done .goal-text{color:var(--ink3);text-decoration:line-through;}
+
+.check-ring{
+  width:20px;height:20px;flex-shrink:0;
+  border:1.5px solid var(--rule2);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:transparent;cursor:pointer;
+  transition:.15s;
+}
+.goal-row.done .check-ring{
+  background:var(--green-mid);border-color:var(--green-mid);color:#fff;
+}
+
+.goal-text{font-size:13px;flex:1;line-height:1.4;}
+
+.goal-meta{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+
+.tag{
+  font-size:10px;font-weight:500;
+  padding:2px 7px;border-radius:4px;
+  letter-spacing:0.2px;
+}
+.tag-shared{background:#eff6ff;color:#1d4ed8;}
+.tag-personal{background:#f5f5f4;color:var(--ink3);}
+
+.owner-chip{
+  font-size:11px;color:var(--ink3);
+  background:#f5f5f4;
+  padding:2px 8px;border-radius:20px;
+}
+
+.empty{
+  text-align:center;padding:28px 0;
+  font-size:13px;color:var(--ink3);
+}
+
+/* ── ADD GOAL ────────────────────────────────── */
+.add-row{
+  display:flex;gap:8px;
+  padding-top:14px;
+  border-top:1px solid var(--rule);
+  margin-top:4px;
+  flex-wrap:wrap;
+}
+.add-row input{
+  flex:1;min-width:180px;
+  padding:9px 12px;
+  border:1px solid var(--rule2);
+  border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;color:var(--ink);
+  background:#fff;outline:none;
+}
+.add-row input:focus{border-color:var(--ink);}
+
+.btn{
+  padding:9px 14px;
+  border:1px solid var(--rule2);
+  border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:500;
+  background:#fff;color:var(--ink);
+  cursor:pointer;white-space:nowrap;
+  transition:.12s;
+}
+.btn:hover{background:#f5f5f4;}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+.btn.primary:hover{opacity:.85;}
+.btn.green{background:var(--green-mid);color:#fff;border-color:var(--green-mid);}
+.btn.green:hover{opacity:.85;}
+
+select.sel{
+  padding:9px 12px;
+  border:1px solid var(--rule2);
+  border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;color:var(--ink);
+  background:#fff;cursor:pointer;outline:none;
+}
+
+/* ── PERIOD SWITCHER ─────────────────────────── */
+.period-sw{
+  display:flex;gap:0;
+  background:#f5f5f4;border-radius:var(--r-sm);
+  padding:3px;width:fit-content;
+  margin-bottom:16px;
+}
+.period-btn{
+  padding:6px 14px;border-radius:6px;
+  font-family:'DM Sans',sans-serif;
+  font-size:12px;font-weight:500;
+  color:var(--ink3);background:transparent;
+  border:none;cursor:pointer;transition:.12s;
+}
+.period-btn.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.07);}
+
+/* ── LEADERBOARD ─────────────────────────────── */
+.lb-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid var(--rule);
+}
+.lb-row:last-child{border-bottom:none;}
+.lb-rank{
+  font-family:'DM Serif Display',serif;
+  font-size:18px;width:24px;text-align:center;
+  color:var(--ink3);flex-shrink:0;
+}
+.lb-rank.g1{color:#b45309;}
+.lb-rank.g2{color:#78716c;}
+.lb-rank.g3{color:#7c6a50;}
+.lb-avatar{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:500;flex-shrink:0;
+}
+.lb-info{flex:1;min-width:0;}
+.lb-name{font-size:13px;font-weight:500;}
+.lb-detail{font-size:11px;color:var(--ink3);}
+.lb-right{text-align:right;flex-shrink:0;}
+.lb-score{
+  font-family:'DM Serif Display',serif;
+  font-size:20px;color:var(--ink);letter-spacing:-0.5px;
+}
+.lb-score-label{font-size:10px;color:var(--ink3);}
+
+/* ── WASHUP SLIDERS ──────────────────────────── */
+.slider-row{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid var(--rule);
+}
+.slider-row:last-child{border-bottom:none;}
+.slider-label{font-size:13px;width:80px;flex-shrink:0;}
+.slider-wrap{flex:1;display:flex;align-items:center;gap:10px;}
+.slider-wrap input[type=range]{
+  flex:1;
+  accent-color:var(--ink);
+  height:4px;
+}
+.slider-val{
+  font-family:'DM Serif Display',serif;
+  font-size:16px;min-width:38px;text-align:right;
+}
+
+/* ── ADMIN ───────────────────────────────────── */
+.team-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 0;
+  border-bottom:1px solid var(--rule);
+}
+.team-row:last-child{border-bottom:none;}
+
+/* ── WINS STRIP ──────────────────────────────── */
+.win-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;
+  border-bottom:1px solid var(--rule);
+  font-size:13px;
+}
+.win-row:last-child{border-bottom:none;}
+.win-tick{font-size:11px;color:var(--green-mid);}
+
+/* ── TOAST ───────────────────────────────────── */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--ink);color:#fff;
+  padding:11px 18px;
+  border-radius:var(--r-sm);
+  font-size:13px;font-weight:500;
+  z-index:9999;
+  opacity:0;transform:translateY(6px);
+  transition:all .25s;
+  pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* ── RESPONSIVE ──────────────────────────────── */
+@media(max-width:960px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .dials-row{grid-template-columns:repeat(2,1fr);}
+  .two-col{grid-template-columns:1fr;}
+  .three-col{grid-template-columns:1fr;}
+}
+@media(max-width:600px){
+  .dials-row{grid-template-columns:1fr 1fr;}
+  .main{padding:16px 16px 40px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH ══════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-wordmark">Move the <em>Needle</em></div>
+    <div class="auth-tagline">Daily team goal tracking — huddle in, wash up, move the needle.</div>
+
+    <div class="tab-bar">
+      <button class="tab-btn on" id="tab-login" onclick="authTab('login')">Sign in</button>
+      <button class="tab-btn" id="tab-signup" onclick="authTab('signup')">Sign up</button>
+    </div>
+
+    <div id="form-login">
+      <div class="field"><label>Email</label>
+        <input type="email" id="l-email" placeholder="you@company.com"/></div>
+      <div class="field"><label>Password</label>
+        <input type="password" id="l-pw" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter')login()"/></div>
+      <button class="btn-full" id="l-btn" onclick="login()">Sign in</button>
+      <div class="auth-msg err" id="l-msg"></div>
+    </div>
+
+    <div id="form-signup" style="display:none">
+      <div class="field"><label>Your first name</label>
+        <input type="text" id="s-name" placeholder="e.g. Sarah"/></div>
+      <div class="field"><label>Email</label>
+        <input type="email" id="s-email" placeholder="you@company.com"/></div>
+      <div class="field"><label>Password</label>
+        <input type="password" id="s-pw" placeholder="Choose a password"
+          onkeydown="if(event.key==='Enter')signup()"/></div>
+      <button class="btn-full" id="s-btn" onclick="signup()">Create account</button>
+      <div class="auth-msg" id="s-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════ -->
+<div id="app">
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-wordmark">Move the <em>Needle</em></div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-nudge" id="topbar-nudge"></div>
+    <div class="topbar-right">
+      <div class="topbar-avatar" id="t-avatar"></div>
+      <span class="topbar-name" id="t-name"></span>
+      <button class="signout" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-group-label">Daily rhythm</div>
+    <button class="nav-btn on" id="n-dashboard" onclick="nav('dashboard')">
+      <span class="nav-icon">◎</span> Dashboard
+    </button>
+    <button class="nav-btn" id="n-huddle" onclick="nav('huddle')">
+      <span class="nav-icon">☀</span> Morning huddle
+    </button>
+    <button class="nav-btn" id="n-washup" onclick="nav('washup')">
+      <span class="nav-icon">✓</span> Wash-up
+    </button>
+
+    <div class="nav-group-label">Team</div>
+    <button class="nav-btn" id="n-leaderboard" onclick="nav('leaderboard')">
+      <span class="nav-icon">▲</span> Leaderboard
+    </button>
+    <button class="nav-btn" id="n-goals" onclick="nav('goals')">
+      <span class="nav-icon">◈</span> All goals
+    </button>
+
+    <div class="nav-group-label">Setup</div>
+    <button class="nav-btn" id="n-admin" onclick="nav('admin')">
+      <span class="nav-icon">⚙</span> Team &amp; targets
+    </button>
+
+    <div class="sidebar-foot">
+      <span id="s-clock"></span>
+      <span id="s-date" style="font-size:10px"></span>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page on" id="page-dashboard">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Good <em id="d-greeting"></em></div>
+          <div class="page-sub" id="d-sub"></div>
+        </div>
+      </div>
+
+      <div class="dials-row" id="dials"></div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-label">Today's goals — <span id="d-count"></span></div>
+          <div id="d-daily"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">Leaderboard — goals completed</div>
+          <div id="d-lb"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MORNING HUDDLE ── -->
+    <div class="page" id="page-huddle">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Morning <em>huddle</em></div>
+          <div class="page-sub">Set goals for today. What will move the needle?</div>
+        </div>
+      </div>
+
+      <div class="period-sw">
+        <button class="period-btn on" onclick="hPeriod('daily',this)">Daily</button>
+        <button class="period-btn" onclick="hPeriod('weekly',this)">Weekly</button>
+        <button class="period-btn" onclick="hPeriod('monthly',this)">Monthly</button>
+        <button class="period-btn" onclick="hPeriod('quarterly',this)">Quarterly</button>
+      </div>
+
+      <div class="card">
+        <div id="h-list"></div>
+        <div class="add-row">
+          <input type="text" id="h-input" placeholder="Add a goal…" maxlength="120"
+            onkeydown="if(event.key==='Enter')addGoal()"/>
+          <select class="sel" id="h-type">
+            <option value="personal">Personal</option>
+            <option value="shared">Team shared</option>
+          </select>
+          <button class="btn primary" onclick="addGoal()">Add</button>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;font-size:12px;color:var(--ink3);padding:0 2px">
+        <strong style="color:var(--ink2)">Tip:</strong>
+        Set your quarterly goal first — weekly &amp; daily goals should ladder up to it.
+        Shared goals are visible to the whole team; personal goals are yours.
+      </div>
+    </div>
+
+    <!-- ── WASH-UP ── -->
+    <div class="page" id="page-washup">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Wash-<em>up</em></div>
+          <div class="page-sub">End of day — tick off goals, update the needles.</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <div class="card">
+            <div class="card-label">Move the needles — drag to update</div>
+            <div id="w-sliders"></div>
+            <button class="btn green" style="width:100%;margin-top:16px" onclick="saveNeedles()">
+              Save &amp; update needles
+            </button>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-label">Today's goals — tick off completed</div>
+            <div id="w-daily"></div>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-label">Team wins today</div>
+            <div id="w-wins"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LEADERBOARD ── -->
+    <div class="page" id="page-leaderboard">
+      <div class="page-head">
+        <div>
+          <div class="page-title"><em>Leaderboard</em></div>
+          <div class="page-sub">Ranked by goals completed this quarter.</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-label">Goals completed — all time</div>
+          <div id="lb-main"></div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-label">This week's sprint</div>
+            <div id="lb-weekly"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ALL GOALS ── -->
+    <div class="page" id="page-goals">
+      <div class="page-head">
+        <div>
+          <div class="page-title">All <em>goals</em></div>
+          <div class="page-sub">Every goal across all time horizons.</div>
+        </div>
+      </div>
+
+      <div class="period-sw">
+        <button class="period-btn on" onclick="gPeriod('daily',this)">Daily</button>
+        <button class="period-btn" onclick="gPeriod('weekly',this)">Weekly</button>
+        <button class="period-btn" onclick="gPeriod('monthly',this)">Monthly</button>
+        <button class="period-btn" onclick="gPeriod('quarterly',this)">Quarterly</button>
+      </div>
+      <div class="card"><div id="g-list"></div></div>
+    </div>
+
+    <!-- ── ADMIN ── -->
+    <div class="page" id="page-admin">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Team &amp; <em>targets</em></div>
+          <div class="page-sub">Set what % progress counts as "in the green" for each period.</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-label">Green zone thresholds</div>
+          <div id="a-targets"></div>
+          <button class="btn primary" style="width:100%;margin-top:16px" onclick="saveTargets()">
+            Save thresholds
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-label">Team members (<span id="a-count"></span>)</div>
+          <div id="a-team"></div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:12px">
+            Team members join by signing up. Anyone with an account appears here.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main><!-- /main -->
+</div><!-- /shell -->
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ SCRIPT ════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────
+// CONFIG — replace with your Supabase project credentials
+// ─────────────────────────────────────────────
+const SB_URL  = 'https://dlskktzcppplwcdqozgx.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsc2trdHpjcHBwbHdjZHFvemd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzM5MDksImV4cCI6MjA5MDY0OTkwOX0.GPlPrCA_QUcYauf69o6BRqgYNFVCxRb8R9VZZf3XLtY';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const PERIODS   = ['daily','weekly','monthly','quarterly'];
+const AV_COLORS = [
+  ['#dbeafe','#1e40af'],['#dcfce7','#166534'],['#fef9c3','#713f12'],
+  ['#ffe4e6','#9f1239'],['#f3e8ff','#6b21a8'],['#ffedd5','#7c2d12'],
+  ['#e0f2fe','#0c4a6e'],['#f0fdf4','#14532d'],['#fdf2f8','#831843'],
+];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let user    = null;
+let profile = null;
+let profiles= [];
+let goals   = [];
+let needles = {daily:0,weekly:0,monthly:0,quarterly:0};
+let targets = {daily:80,weekly:80,monthly:80,quarterly:80};
+let hPer    = 'daily';
+let gPer    = 'daily';
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  tick(); setInterval(tick,30000);
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){ user=session.user; await boot(); }
+  sb.auth.onAuthStateChange(async(_,s)=>{
+    if(s&&!user){user=s.user;await boot();}
+    if(!s){user=null;showAuth();}
+  });
+});
+
+async function boot(){
+  await loadAll();
+  showApp();
+  renderAll();
+}
+
+// ─────────────────────────────────────────────
+// CLOCK
+// ─────────────────────────────────────────────
+function tick(){
+  const n=new Date();
+  const el=document.getElementById('s-clock');
+  if(el) el.textContent=n.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const de=document.getElementById('s-date');
+  if(de) de.textContent=n.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const gr=document.getElementById('d-greeting');
+  if(gr){const h=n.getHours();gr.textContent=h<12?'morning':h<17?'afternoon':'evening';}
+  const ds=document.getElementById('d-sub');
+  if(ds) ds.textContent=n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+
+// ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+function authTab(t){
+  document.getElementById('tab-login').classList.toggle('on',t==='login');
+  document.getElementById('tab-signup').classList.toggle('on',t==='signup');
+  document.getElementById('form-login').style.display=t==='login'?'block':'none';
+  document.getElementById('form-signup').style.display=t==='signup'?'block':'none';
+}
+
+async function login(){
+  const email=v('l-email'),pw=v('l-pw');
+  setBtn('l-btn','Signing in…',true);
+  const{error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){setMsg('l-msg',error.message,'err');setBtn('l-btn','Sign in',false);}
+}
+
+async function signup(){
+  const name=v('s-name').trim(),email=v('s-email'),pw=v('s-pw');
+  if(!name){setMsg('s-msg','Please enter your name.','err');return;}
+  setBtn('s-btn','Creating…',true);
+  const{data,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name}}});
+  if(error){setMsg('s-msg',error.message,'err');setBtn('s-btn','Create account',false);return;}
+  if(data.user){
+    await sb.from('profiles').upsert({
+      id:data.user.id,full_name:name,email,
+      goals_completed:0,points:0,streak:0
+    });
+  }
+  setMsg('s-msg','Account created! Check your email to confirm.','ok');
+  setBtn('s-btn','Create account',false);
+}
+
+async function logout(){await sb.auth.signOut();}
+
+// ─────────────────────────────────────────────
+// SCREEN SWITCH
+// ─────────────────────────────────────────────
+function showAuth(){
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+function showApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+// ─────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────
+async function loadAll(){
+  // profile
+  const{data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+  profile=p||{full_name:user.user_metadata?.full_name||'You',goals_completed:0,points:0,streak:0};
+
+  // all profiles (for leaderboard & owner labels)
+  const{data:ps}=await sb.from('profiles').select('*').order('goals_completed',{ascending:false});
+  profiles=ps||[];
+
+  // goals
+  const{data:gs}=await sb.from('goals').select('*').order('created_at',{ascending:false});
+  goals=gs||[];
+
+  // needles
+  const{data:nd}=await sb.from('needle_values').select('*').limit(1).maybeSingle();
+  if(nd) needles={daily:nd.daily,weekly:nd.weekly,monthly:nd.monthly,quarterly:nd.quarterly};
+
+  // targets
+  const{data:tg}=await sb.from('targets').select('*').limit(1).maybeSingle();
+  if(tg) targets={daily:tg.daily,weekly:tg.weekly,monthly:tg.monthly,quarterly:tg.quarterly};
+}
+
+// ─────────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────────
+function renderAll(){
+  renderTopbar();
+  renderDials();
+  renderDashDaily();
+  renderDashLB();
+  renderHuddle();
+  renderWashup();
+  renderLB();
+  renderGoals();
+  renderAdmin();
+  renderNudge();
+}
+
+function renderTopbar(){
+  const name=(profile?.full_name||'').split(' ')[0];
+  document.getElementById('t-name').textContent=name;
+  document.getElementById('t-avatar').textContent=ini(profile?.full_name||'');
+}
+
+function renderNudge(){
+  const el=document.getElementById('topbar-nudge');
+  const behind=PERIODS.filter(p=>needles[p]<targets[p]);
+  if(behind.length){
+    el.style.display='block';
+    el.textContent=cap(behind[0])+' goal needs a push today!';
+  } else {
+    el.style.display='none';
+  }
+}
+
+// ─────────────────────────────────────────────
+// DIALS
+// ─────────────────────────────────────────────
+function renderDials(){
+  document.getElementById('dials').innerHTML=PERIODS.map(p=>{
+    const pct=Math.round(needles[p]);
+    const tgt=targets[p];
+    const z=pct>=tgt?'green':pct>=tgt*0.6?'amber':'red';
+    const label=z==='green'?'In the green':z==='amber'?'Getting there':'Behind — push!';
+    return `<div class="dial-card">
+      <div class="dial-period">${p}</div>
+      ${dialSVG(pct,tgt,z)}
+      <div class="dial-num" style="color:var(--${z})">${pct}%</div>
+      <div class="dial-sub">target ${tgt}%</div>
+      <div class="zone-pill z-${z}">${label}</div>
+    </div>`;
+  }).join('');
+}
+
+function dialSVG(pct,tgt,zone){
+  const R=60,cx=68,cy=68;
+  const pt=(a,r)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
+  const a0=Math.PI, sweep=Math.PI;
+  const aFill=a0+(pct/100)*sweep;
+  const aTgt =a0+(tgt/100)*sweep;
+  const[x0,y0]=pt(a0,R);
+  const[x1,y1]=pt(a0+sweep,R);
+  const[xf,yf]=pt(aFill,R);
+  const[xt1,yt1]=pt(aTgt,R+4);
+  const[xt2,yt2]=pt(aTgt,R-8);
+  const[xn,yn]=pt(aFill,R-16);
+  const lg=pct>50?1:0;
+  const cols={green:['#bbf7d0','#16a34a'],amber:['#fde68a','#d97706'],red:['#fecaca','#dc2626']};
+  const[trk,fil]=cols[zone];
+  return `<svg width="136" height="72" viewBox="0 0 136 72" style="overflow:visible">
+    <path d="M${x0} ${y0} A${R} ${R} 0 1 1 ${x1} ${y1}" fill="none" stroke="${trk}" stroke-width="9" stroke-linecap="round"/>
+    ${pct>0?`<path d="M${x0} ${y0} A${R} ${R} 0 ${lg} 1 ${xf} ${yf}" fill="none" stroke="${fil}" stroke-width="9" stroke-linecap="round"/>`:''}
+    <line x1="${xt1}" y1="${yt1}" x2="${xt2}" y2="${yt2}" stroke="#d4d4d4" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="${cx}" y1="${cy}" x2="${xn}" y2="${yn}" stroke="${fil}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="4" fill="${fil}"/>
+    <circle cx="${cx}" cy="${cy}" r="2" fill="white"/>
+  </svg>`;
+}
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+function renderDashDaily(){
+  const today=todayStr();
+  const daily=goals.filter(g=>g.period==='daily'&&g.date===today);
+  const done=daily.filter(g=>g.done).length;
+  document.getElementById('d-count').textContent=`${done} / ${daily.length} done`;
+  const el=document.getElementById('d-daily');
+  el.innerHTML=daily.length
+    ?daily.map(g=>goalRow(g,true)).join('')
+    :`<div class="empty">No daily goals yet — set them in Morning Huddle.</div>`;
+}
+
+function renderDashLB(){
+  const sorted=[...profiles].sort((a,b)=>b.goals_completed-a.goals_completed).slice(0,6);
+  document.getElementById('d-lb').innerHTML=sorted.length
+    ?sorted.map((m,i)=>lbRow(m,i)).join('')
+    :`<div class="empty">No team members yet.</div>`;
+}
+
+// ─────────────────────────────────────────────
+// HUDDLE
+// ─────────────────────────────────────────────
+function hPeriod(p,btn){
+  hPer=p;
+  btn.closest('.period-sw').querySelectorAll('.period-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderHuddle();
+}
+
+function renderHuddle(){
+  const today=todayStr();
+  const list=hPer==='daily'
+    ?goals.filter(g=>g.period==='daily'&&g.date===today)
+    :goals.filter(g=>g.period===hPer);
+  document.getElementById('h-list').innerHTML=list.length
+    ?list.map(g=>goalRow(g,hPer==='daily')).join('')
+    :`<div class="empty">${cap(hPer)} goals will appear here. Add one below.</div>`;
+}
+
+async function addGoal(){
+  const input=document.getElementById('h-input');
+  const text=input.value.trim();
+  if(!text) return;
+  const type=document.getElementById('h-type').value;
+  const obj={user_id:user.id,text,period:hPer,type,done:false,date:todayStr(),created_at:new Date().toISOString()};
+  const{data,error}=await sb.from('goals').insert(obj).select().single();
+  if(!error&&data){goals.unshift(data);input.value='';renderHuddle();renderDashDaily();renderGoals();toast('Goal added!');}
+}
+
+async function toggleGoal(id){
+  const g=goals.find(x=>x.id===id);
+  if(!g||g.user_id!==user.id) return; // only own goals
+  g.done=!g.done;
+  const{error}=await sb.from('goals').update({done:g.done}).eq('id',id);
+  if(error){g.done=!g.done;return;}
+  if(g.done){
+    const pts=(profile.goals_completed||0)+1;
+    await sb.from('profiles').update({goals_completed:pts,points:pts}).eq('id',user.id);
+    profile.goals_completed=pts;profile.points=pts;
+    const ix=profiles.findIndex(p=>p.id===user.id);
+    if(ix>=0){profiles[ix].goals_completed=pts;profiles[ix].points=pts;}
+    toast('Goal done — needle moved! 🎯');
+  }
+  renderDashDaily();renderDashLB();renderHuddle();renderWashupDaily();renderWashupWins();renderLB();
+}
+
+// ─────────────────────────────────────────────
+// WASH-UP
+// ─────────────────────────────────────────────
+function renderWashup(){
+  renderWashupSliders();
+  renderWashupDaily();
+  renderWashupWins();
+}
+
+function renderWashupSliders(){
+  document.getElementById('w-sliders').innerHTML=PERIODS.map(p=>{
+    const pct=Math.round(needles[p]);
+    const z=pct>=targets[p]?'green':pct>=targets[p]*0.6?'amber':'red';
+    return `<div class="slider-row">
+      <div class="slider-label">${cap(p)}</div>
+      <div class="slider-wrap">
+        <input type="range" min="0" max="100" step="1" value="${pct}" id="sl-${p}"
+          oninput="document.getElementById('sv-${p}').textContent=this.value+'%';
+                   document.getElementById('sv-${p}').style.color='var(--${z})'"/>
+        <div class="slider-val" id="sv-${p}" style="color:var(--${z})">${pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderWashupDaily(){
+  const today=todayStr();
+  const daily=goals.filter(g=>g.period==='daily'&&g.date===today);
+  document.getElementById('w-daily').innerHTML=daily.length
+    ?daily.map(g=>goalRow(g,true)).join('')
+    :`<div class="empty">No daily goals set today.</div>`;
+}
+
+function renderWashupWins(){
+  const today=todayStr();
+  const wins=goals.filter(g=>g.done&&g.date===today);
+  document.getElementById('w-wins').innerHTML=wins.length
+    ?wins.map(g=>`<div class="win-row">
+        <span class="win-tick">✓</span>
+        <span style="flex:1;font-size:13px">${esc(g.text)}</span>
+        <span class="owner-chip">${ownerName(g.user_id)}</span>
+      </div>`).join('')
+    :`<div class="empty">Complete some goals first!</div>`;
+}
+
+async function saveNeedles(){
+  PERIODS.forEach(p=>{needles[p]=parseInt(document.getElementById('sl-'+p).value);});
+  const{data:ex}=await sb.from('needle_values').select('id').limit(1).maybeSingle();
+  if(ex) await sb.from('needle_values').update(needles).eq('id',ex.id);
+  else   await sb.from('needle_values').insert(needles);
+  renderDials();renderNudge();toast('Needles updated!');
+}
+
+// ─────────────────────────────────────────────
+// LEADERBOARD PAGE
+// ─────────────────────────────────────────────
+function renderLB(){
+  const byGoals=[...profiles].sort((a,b)=>b.goals_completed-a.goals_completed);
+  document.getElementById('lb-main').innerHTML=byGoals.length
+    ?byGoals.map((m,i)=>lbRow(m,i,'goals')).join('')
+    :`<div class="empty">No team members yet.</div>`;
+
+  // weekly sprint — goals completed this week (approximation: goals.done this week)
+  const weekStart=weekStartStr();
+  const weekGoals=goals.filter(g=>g.done&&g.date>=weekStart);
+  const weekly={};
+  weekGoals.forEach(g=>{weekly[g.user_id]=(weekly[g.user_id]||0)+1;});
+  const wSorted=profiles.map(m=>({...m,week_goals:weekly[m.id]||0})).sort((a,b)=>b.week_goals-a.week_goals);
+  document.getElementById('lb-weekly').innerHTML=wSorted.length
+    ?wSorted.map((m,i)=>`<div class="lb-row">
+        <div class="lb-rank ${i<3?'g'+(i+1):''}">${i+1}</div>
+        <div class="lb-avatar" style="background:${av(i)[0]};color:${av(i)[1]}">${ini(m.full_name)}</div>
+        <div class="lb-info">
+          <div class="lb-name">${esc(m.full_name||'?')}</div>
+          <div class="lb-detail">${m.week_goals} this week</div>
+        </div>
+        <div class="lb-right">
+          <div class="lb-score">${m.week_goals}</div>
+          <div class="lb-score-label">goals</div>
+        </div>
+      </div>`).join('')
+    :`<div class="empty">No activity yet this week.</div>`;
+}
+
+// ─────────────────────────────────────────────
+// ALL GOALS PAGE
+// ─────────────────────────────────────────────
+function gPeriod(p,btn){
+  gPer=p;
+  btn.closest('.period-sw').querySelectorAll('.period-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGoals();
+}
+
+function renderGoals(){
+  const today=todayStr();
+  const list=gPer==='daily'
+    ?goals.filter(g=>g.period==='daily'&&g.date===today)
+    :goals.filter(g=>g.period===gPer);
+  document.getElementById('g-list').innerHTML=list.length
+    ?list.map(g=>goalRow(g,gPer==='daily')).join('')
+    :`<div class="empty">No ${gPer} goals yet.</div>`;
+}
+
+// ─────────────────────────────────────────────
+// ADMIN
+// ─────────────────────────────────────────────
+function renderAdmin(){
+  document.getElementById('a-targets').innerHTML=PERIODS.map(p=>`
+    <div class="slider-row">
+      <div class="slider-label">${cap(p)}</div>
+      <div class="slider-wrap">
+        <input type="range" min="50" max="100" step="5" value="${targets[p]}" id="tgt-${p}"
+          oninput="document.getElementById('tv-${p}').textContent=this.value+'%'"/>
+        <div class="slider-val" id="tv-${p}">${targets[p]}%</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('a-count').textContent=profiles.length;
+  document.getElementById('a-team').innerHTML=profiles.length
+    ?profiles.map((m,i)=>`<div class="team-row">
+        <div class="lb-avatar" style="background:${av(i)[0]};color:${av(i)[1]};width:30px;height:30px;font-size:11px">${ini(m.full_name)}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500">${esc(m.full_name||'Unknown')}</div>
+          <div style="font-size:11px;color:var(--ink3)">${esc(m.email||'')}</div>
+        </div>
+        <div style="font-size:12px;color:var(--ink3)">${m.goals_completed||0} goals</div>
+      </div>`).join('')
+    :`<div class="empty">No team members yet.</div>`;
+}
+
+async function saveTargets(){
+  PERIODS.forEach(p=>{targets[p]=parseInt(document.getElementById('tgt-'+p).value);});
+  const{data:ex}=await sb.from('targets').select('id').limit(1).maybeSingle();
+  if(ex) await sb.from('targets').update(targets).eq('id',ex.id);
+  else   await sb.from('targets').insert(targets);
+  renderDials();renderNudge();renderWashupSliders();toast('Targets saved!');
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function nav(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.getElementById('n-'+p).classList.add('on');
+  if(p==='washup')  renderWashup();
+  if(p==='leaderboard') renderLB();
+  if(p==='goals')   renderGoals();
+  if(p==='admin')   renderAdmin();
+}
+
+// ─────────────────────────────────────────────
+// SHARED HTML HELPERS
+// ─────────────────────────────────────────────
+function goalRow(g,showCheck){
+  const own=g.user_id===user.id;
+  return `<div class="goal-row ${g.done?'done':''}" id="gr-${g.id}">
+    ${showCheck?`<div class="check-ring" onclick="${own?`toggleGoal('${g.id}')`:''}" style="${own?'cursor:pointer':'cursor:default;opacity:0.4'}">${g.done?'✓':''}</div>`:''}
+    <span class="goal-text">${esc(g.text)}</span>
+    <span class="goal-meta">
+      <span class="tag ${g.type==='shared'?'tag-shared':'tag-personal'}">${g.type==='shared'?'Shared':'Personal'}</span>
+      <span class="owner-chip">${ownerName(g.user_id)}</span>
+    </span>
+  </div>`;
+}
+
+function lbRow(m,i,mode){
+  const rk=i===0?'g1':i===1?'g2':i===2?'g3':'';
+  const score=m.goals_completed||0;
+  const you=m.id===user.id?' (you)':'';
+  return `<div class="lb-row">
+    <div class="lb-rank ${rk}">${i+1}</div>
+    <div class="lb-avatar" style="background:${av(i)[0]};color:${av(i)[1]}">${ini(m.full_name)}</div>
+    <div class="lb-info">
+      <div class="lb-name">${esc(m.full_name||'?')}${you}</div>
+      <div class="lb-detail">${score} goals completed</div>
+    </div>
+    <div class="lb-right">
+      <div class="lb-score">${score}</div>
+      <div class="lb-score-label">goals</div>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────
+// UTILITY
+// ─────────────────────────────────────────────
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function weekStartStr(){
+  const d=new Date();
+  const day=d.getDay()||7; // Mon=1 … Sun=7
+  d.setDate(d.getDate()-(day-1));
+  return d.toISOString().slice(0,10);
+}
+
+function ownerName(uid){
+  if(uid===user.id) return 'You';
+  const p=profiles.find(x=>x.id===uid);
+  return p?(p.full_name||'?').split(' ')[0]:'?';
+}
+
+function ini(name){
+  return (name||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function av(i){ return AV_COLORS[i%AV_COLORS.length]; }
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function v(id){ return document.getElementById(id).value; }
+function setBtn(id,txt,dis){ const b=document.getElementById(id); b.textContent=txt; b.disabled=dis; }
+function setMsg(id,txt,cls){ const m=document.getElementById(id); m.textContent=txt; m.className='auth-msg '+(cls||''); }
+
+let _tt;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
